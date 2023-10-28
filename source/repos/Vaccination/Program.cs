@@ -154,21 +154,59 @@ namespace Vaccination
 
         public static void QuantityVaccine()
         {
-            Console.Write("Antal dos");
+            Console.Write("Antal dos ");
             vaccinqaunteti = int.Parse(Console.ReadLine());
             Console.WriteLine("Du har lagt till " + vaccinqaunteti);        
         }
 
         public static void Indata()
         {
+            while (true)
+            {
+                Console.Write("En ny sökväg för indata ");
+                string newFilePath = Console.ReadLine();
+                fileInput = newFilePath;
 
+                if (File.Exists(fileInput))
+                {
+                    Console.WriteLine(newFilePath);
+
+                    break;
+                }
+                else
+                {
+                    Console.WriteLine("Hittar inte filen");
+                }
+            }
         }
 
         public static void Outdata()
-        
         {
+            while (true)
+            {
 
-        }        
+                Console.WriteLine("En ny sökväg för outdata");
+                string newFilePath = Console.ReadLine();
+                fileOutput = newFilePath;
+
+                if (Directory.Exists(fileInput))
+                {
+                    Console.WriteLine(fileInput);
+
+                    if (!File.Exists(fileOutput))
+                    {
+                        using (File.Create(fileOutput)) { }
+                    }
+
+                    break;
+                }
+                else
+                {
+                    Console.WriteLine("Hittar inte mappen");
+                }
+                
+            }
+        }    
 
         // Create the lines that should be saved to a CSV file after creating the vaccination order.
         //

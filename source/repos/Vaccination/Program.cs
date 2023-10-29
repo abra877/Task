@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 
+
 namespace Vaccination
 {
     public class People
@@ -21,8 +22,8 @@ namespace Vaccination
     public class PeopleDose
     {
         public string DoseBrithOfDate { get; set; }
-        public string DoseFirstName { get; set;}
-        public string DoseLastName { get; set;}
+        public string DoseFirstName { get; set; }
+        public string DoseLastName { get; set; }
         public int DoseAmunt { get; set; }
     }
 
@@ -32,7 +33,7 @@ namespace Vaccination
     {
         private static List<People> peopleList = new List<People>();
         private static string fileInput = @"C:\Vaccin\filein.csv";
-        private static int vaccinqaunteti = 0;
+        private static int vaccinQuantity = 0;
         private static bool age = false;
 
         private static List<PeopleDose> peopleDoses = new List<PeopleDose>();
@@ -44,11 +45,6 @@ namespace Vaccination
         public static void Main()
         {
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-
-            if (!File.Exists(fileInput))
-            {
-                using (File.Create(fileInput)) { }
-            }
 
             while (running)
             {
@@ -89,11 +85,11 @@ namespace Vaccination
                 {
                     Outdata();
                 }
-                else if (option == 6) 
+                else if (option == 6)
                 {
                     running = false;
                 }
-               
+
             }
 
             //skapa pri.
@@ -106,8 +102,29 @@ namespace Vaccination
         }
         public static void PriorityList()
         {
-            CreateVaccinationOrder(ReadFromIndataCSV(), vaccinqaunteti, age);
 
+            File.WriteAllLines(fileOutput, CreateVaccinationOrder(ReadFromIndataCSV(), vaccinQuantity, age));
+
+            foreach (var person in peopleDoses)
+            {
+                while (vaccinQuantity > 0)
+                {
+                    if (person.DoseAmunt >= 2 && vaccinQuantity >= 2)
+                    {
+                        person.DoseAmunt -= 2;
+                        vaccinQuantity -= 2;
+                    }
+                    else if (person.DoseAmunt >= 1 && vaccinQuantity >= 1)
+                    {
+                        person.DoseAmunt -= 1;
+                        vaccinQuantity -= 1;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
         }
 
         public static void AddPeople()
@@ -155,8 +172,8 @@ namespace Vaccination
         public static void QuantityVaccine()
         {
             Console.Write("Antal dos ");
-            vaccinqaunteti = int.Parse(Console.ReadLine());
-            Console.WriteLine("Du har lagt till " + vaccinqaunteti);        
+            vaccinQuantity = int.Parse(Console.ReadLine());
+            Console.WriteLine("Du har lagt till " + vaccinQuantity);
         }
 
         public static void Indata()
@@ -204,9 +221,9 @@ namespace Vaccination
                 {
                     Console.WriteLine("Hittar inte mappen");
                 }
-                
+
             }
-        }    
+        }
 
         // Create the lines that should be saved to a CSV file after creating the vaccination order.
         //
@@ -217,40 +234,151 @@ namespace Vaccination
         // vaccinateChildren: whether to vaccinate people younger than 18
         public static string[] CreateVaccinationOrder(string[] input, int doses, bool vaccinateChildren)
         {
-            // Replace with your own code.
-            return new string[0];
+            People people = new People();
+            List<People> changeToList = new List<People>();
+            List<People> transformbirthofdate = new List<People>();
+            List<People> novaccitionforchildren = new List<People>();
+            List<People> vaccinationforall = new List<People>();
+            List<People> orderPeople = new List<People>();
+            int age = int.Parse(people.BirthOfDate.Substring(0, 8));
+            int doseforpeople = 2;
+
+
+            foreach (string personData in input)
+            {
+                string[] lines = personData.Split(',');
+
+                if (lines.Length >= 6)
+                {
+                    string birthOfDate = lines[0];
+                    string lastName = lines[1];
+                    string firstName = lines[2];
+                    int personInRiskGroup = int.Parse(lines[3]);
+                    int groupForInfection = int.Parse(lines[4]);
+                    int healthCareStaff = int.Parse(lines[5]);
+
+                    var person = new People
+                    {
+                        BirthOfDate = birthOfDate,
+                        LastName = lastName,
+                        FirstName = firstName,
+                        PersonsInRiskGroup = personInRiskGroup,
+                        GroupforInfection = groupForInfection,
+                        HealthCareStaff = healthCareStaff
+                    };
+                    changeToList.Add(person);
+                }
+            }
+
+            foreach (var person in changeToList)
+            {
+                string BirtOfDate = person.BirthOfDate;
+
+                if (BirtOfDate.Length == 10)
+                {
+                    BirtOfDate = $"19{BirtOfDate.Insert(6, "-")}";
+                }
+                else if (BirtOfDate.Length == 11)
+                {
+                    BirtOfDate = $"19{BirtOfDate}";
+                }
+                else if (BirtOfDate.Length == 12)
+                {
+                    BirtOfDate = BirtOfDate.Insert(8, "-");
+                }
+
+                person.BirthOfDate = BirtOfDate;
+
+                People changeBirthOfDate = new People
+                {
+                    BirthOfDate = BirtOfDate,
+                    LastName = person.LastName,
+                    FirstName = person.FirstName,
+                    PersonsInRiskGroup = person.PersonsInRiskGroup,
+                    GroupforInfection = person.GroupforInfection,
+                    HealthCareStaff = person.HealthCareStaff,
+
+                };
+                transformbirthofdate.Add(changeBirthOfDate);
+
+                People excludechildren = new People
+                {
+                    BirthOfDate = BirtOfDate,
+                    LastName = person.LastName,
+                    FirstName = person.FirstName,
+                    PersonsInRiskGroup = person.PersonsInRiskGroup,
+                    GroupforInfection = person.GroupforInfection,
+                    HealthCareStaff = person.HealthCareStaff,
+
+                };
+                novaccitionforchildren.Add(excludechildren);
+
+
+            }
+
+            if (!vaccinateChildren)
+            {
+                if (age <= 20050101)
+                {
+
+                    List<People> order = novaccitionforchildren
+                   .OrderBy(person => person.BirthOfDate)
+                   .ThenBy(person => person.HealthCareStaff == 1)
+                   .ThenBy(person => age <= 19580101)
+                   .ThenBy(person => person.PersonsInRiskGroup == 1)
+                   .ToList();
+
+                    List<People> notinorderpepole = novaccitionforchildren
+                   .OrderBy(person => person.BirthOfDate)
+                   .Except(orderPeople)
+                   .ToList();
+                    orderPeople = order.Concat(notinorderpepole).ToList();
+                }
+
+            }
+            else
+            {
+                List<People> order = vaccinationforall
+                      .OrderBy(person => person.BirthOfDate)
+                      .ThenBy(person => person.HealthCareStaff == 1)
+                      .ThenBy(person => age <= 19580101)
+                      .ThenBy(person => person.PersonsInRiskGroup == 1)
+                      .ToList();
+
+                List<People> notinorderpepole = vaccinationforall
+               .OrderBy(person => person.BirthOfDate)
+               .Except(orderPeople)
+               .ToList();
+                orderPeople = order.Concat(notinorderpepole).ToList();
+            }
+            foreach (var person in orderPeople)
+            {
+                PeopleDose listPeopleDose = new PeopleDose
+                {
+                    DoseBrithOfDate = person.BirthOfDate,
+                    DoseLastName = person.LastName,
+                    DoseFirstName = person.FirstName,
+                    DoseAmunt = doseforpeople - person.GroupforInfection,
+                };
+                peopleDoses.Add(listPeopleDose);
+
+            }
+
+            var changePeople = peopleDoses;
+
+            string[] outputLines =
+            changePeople.Select(person =>
+            $"{person.DoseBrithOfDate}, {person.DoseLastName}, {person.DoseFirstName}, {person.DoseAmunt}")
+            .ToArray();
+
+            return outputLines;
         }
 
         public static string[] ReadFromIndataCSV()
         {
-           
-
             string[] lines = File.ReadAllLines(fileInput);
 
-            foreach (string line in lines)
-            {
-                string[] entries = line.Split(',');
-
-                string britofdate = entries[0];
-                string lastName = entries[1];
-                string firstName = entries[2];
-                int personsInRiskGroup = int.Parse(entries[3]);
-                int groupforInfection = int.Parse(entries[4]);
-                int healthCareStaff = int.Parse(entries[5]);
-
-                peopleList.Add(new People 
-                {
-                    BirthOfDate = britofdate,
-                    LastName = lastName,
-                    FirstName = firstName,
-                    PersonsInRiskGroup = personsInRiskGroup,
-                    GroupforInfection = groupforInfection,
-                    HealthCareStaff = healthCareStaff
-                });
-            }
-
             return lines;
-
         }
 
         public static void SaveToIndataCSV()
@@ -265,20 +393,10 @@ namespace Vaccination
                     person.PersonsInRiskGroup + "," +
                     person.GroupforInfection + "," +
                     person.HealthCareStaff;
-                    list.Add(line);
+                list.Add(line);
             }
 
             File.WriteAllLines(fileInput, list);
-        }
-
-        public static void ReadFromOutdataCSV()
-        {
-
-        }
-
-        public static void SaveToOutdataCSV()
-        {
-
         }
 
         public static int ShowChoice(string heading)

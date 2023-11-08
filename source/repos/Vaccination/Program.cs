@@ -31,13 +31,13 @@ namespace Vaccination
 
     public class Program
     {
-        private static List<People> peopleList = new List<People>();
-        private static string fileInput = @"C:\Vaccin\filein.csv";
+
+        private static string fileInput = @"C:\Vaccin\Vaccin1.csv";
         private static int vaccinQuantity = 0;
         private static bool age = false;
 
         private static List<PeopleDose> peopleDoses = new List<PeopleDose>();
-        private static string fileOutput = @"C:\Vaccin\fileout.csv";
+        private static string fileOutput = @"C:\Vaccin\output.csv";
 
         private static bool running = true;
 
@@ -48,12 +48,15 @@ namespace Vaccination
 
             while (running)
             {
-
+                Console.WriteLine("Huvudmeny\n");
+                Console.WriteLine($"Antal vaccindoser: {vaccinQuantity}");
+                Console.WriteLine($"Åldersgräns 18 år:");
+                Console.WriteLine($"Indata: {fileInput}");
+                Console.WriteLine($"Utdata: {fileOutput}");
 
                 int option = ShowMenu("Gör ett val", new[]
                 {
                 "Skapa prioteringslista",
-                "Lägg till person",
                 "Åldergräns",
                 "Antal vaccination",
                 "indata",
@@ -67,25 +70,21 @@ namespace Vaccination
                 }
                 else if (option == 1)
                 {
-                    AddPeople();
+                    AgeLimit();
                 }
                 else if (option == 2)
                 {
-                    AgeLimit();
+                    QuantityVaccine();
                 }
                 else if (option == 3)
                 {
-                    QuantityVaccine();
+                    Indata();
                 }
                 else if (option == 4)
                 {
-                    Indata();
-                }
-                else if (option == 5)
-                {
                     Outdata();
                 }
-                else if (option == 6)
+                else if (option == 5)
                 {
                     running = false;
                 }
@@ -102,59 +101,61 @@ namespace Vaccination
         }
         public static void PriorityList()
         {
+            string[] files = File.ReadAllLines(fileInput);
 
-            File.WriteAllLines(fileOutput, CreateVaccinationOrder(ReadFromIndataCSV(), vaccinQuantity, age));
-
-            foreach (var person in peopleDoses)
+            try
             {
-                while (vaccinQuantity > 0)
+                Handleexception(files);
+                string[] filesOutput = CreateVaccinationOrder(files, vaccinQuantity, age);
+
+                if (!File.Exists(fileOutput))
                 {
-                    if (person.DoseAmunt >= 2 && vaccinQuantity >= 2)
+                    File.Create(fileOutput);
+                    File.WriteAllLines(fileOutput, filesOutput);
+                }
+                else
+                {
+                    int choise = ShowChoice("En fil finns redan, Skriv över?");
+
+                    if (choise == 1)
                     {
-                        person.DoseAmunt -= 2;
-                        vaccinQuantity -= 2;
-                    }
-                    else if (person.DoseAmunt >= 1 && vaccinQuantity >= 1)
-                    {
-                        person.DoseAmunt -= 1;
-                        vaccinQuantity -= 1;
+                        File.WriteAllLines(fileOutput, filesOutput);
                     }
                     else
                     {
-                        break;
+                        return;
+                    }
+
+                }
+
+                foreach (var person in peopleDoses)
+                {
+                    while (vaccinQuantity > 0)
+                    {
+                        if (person.DoseAmunt >= 2 && vaccinQuantity >= 2)
+                        {
+                            person.DoseAmunt -= 2;
+                            vaccinQuantity -= 2;
+                        }
+                        else if (person.DoseAmunt >= 1 && vaccinQuantity >= 1)
+                        {
+                            person.DoseAmunt -= 1;
+                            vaccinQuantity -= 1;
+                        }
+                        else
+                        {
+                            break;
+                        }
                     }
                 }
             }
-        }
-
-        public static void AddPeople()
-        {
-            Console.Write("Personnummer: ");
-            string birtOFDate = Console.ReadLine();
-
-            Console.Write("Namn: ");
-            string firstName = Console.ReadLine();
-
-            Console.Write("Efternamn: ");
-            string lastName = Console.ReadLine();
-
-            int personsInRiskGroup = ShowChoice("Tillhör du riskgruppen?");
-
-            int groupForInfection = ShowChoice("Har du varit sjuk tidigare?");
-
-            int healthCareStaff = ShowChoice("Jobbar du inom vården?");
-
-            var people = new People
+            catch (Exception e)
             {
-                BirthOfDate = birtOFDate,
-                FirstName = firstName,
-                LastName = lastName,
-                PersonsInRiskGroup = personsInRiskGroup,
-                GroupforInfection = groupForInfection,
-                HealthCareStaff = healthCareStaff
-            };
-            peopleList.Add(people);
+                Console.WriteLine(e.Message);
+            }
         }
+
+
 
         public static void AgeLimit()
         {
@@ -171,9 +172,8 @@ namespace Vaccination
 
         public static void QuantityVaccine()
         {
-            Console.Write("Antal dos ");
-            vaccinQuantity = int.Parse(Console.ReadLine());
-            Console.WriteLine("Du har lagt till " + vaccinQuantity);
+            int inputvaccinamount = Vaccinamoutinput("ändra antal vaccin: ");
+            vaccinQuantity += inputvaccinamount;
         }
 
         public static void Indata()
@@ -206,9 +206,9 @@ namespace Vaccination
                 string newFilePath = Console.ReadLine();
                 fileOutput = newFilePath;
 
-                if (Directory.Exists(fileInput))
+                if (Directory.Exists(Path.GetDirectoryName(fileOutput)))
                 {
-                    Console.WriteLine(fileInput);
+                    Console.WriteLine(fileOutput);
 
                     if (!File.Exists(fileOutput))
                     {
@@ -237,19 +237,14 @@ namespace Vaccination
             People people = new People();
             List<People> changeToList = new List<People>();
             List<People> transformbirthofdate = new List<People>();
-            List<People> novaccitionforchildren = new List<People>();
-            List<People> vaccinationforall = new List<People>();
-            List<People> orderPeople = new List<People>();
-            int age = int.Parse(people.BirthOfDate.Substring(0, 8));
+
             int doseforpeople = 2;
 
 
             foreach (string personData in input)
             {
                 string[] lines = personData.Split(',');
-
-                if (lines.Length >= 6)
-                {
+                              
                     string birthOfDate = lines[0];
                     string lastName = lines[1];
                     string firstName = lines[2];
@@ -267,7 +262,7 @@ namespace Vaccination
                         HealthCareStaff = healthCareStaff
                     };
                     changeToList.Add(person);
-                }
+                
             }
 
             foreach (var person in changeToList)
@@ -300,57 +295,60 @@ namespace Vaccination
 
                 };
                 transformbirthofdate.Add(changeBirthOfDate);
+            }
 
-                People excludechildren = new People
+            List<People> order = transformbirthofdate
+                  .OrderBy(person => person.BirthOfDate)
+                  .ToList();
+
+            if(!vaccinateChildren)
+            {
+                order = transformbirthofdate.Where(person => Agecontrol(person.BirthOfDate) >= 18)
+                  .ToList();
+            }
+
+            List<People> orderPeople = new List<People>();
+
+            List<People> healthcareStaffFilter = new List<People>();
+            List<People> oldAgeFilter = new List<People>();
+            List<People> personInRiskGroupFilter = new List<People>();
+            List<People> noOrderPeopleFilter = new List<People>();
+
+            foreach (var person in order)
+            {
+                People filterpeople = new People
                 {
-                    BirthOfDate = BirtOfDate,
+                    BirthOfDate = person.BirthOfDate,
                     LastName = person.LastName,
                     FirstName = person.FirstName,
                     PersonsInRiskGroup = person.PersonsInRiskGroup,
-                    GroupforInfection = person.GroupforInfection,
-                    HealthCareStaff = person.HealthCareStaff,
-
+                    GroupforInfection =person.GroupforInfection,
+                    HealthCareStaff = person.HealthCareStaff
                 };
-                novaccitionforchildren.Add(excludechildren);
 
-
-            }
-
-            if (!vaccinateChildren)
-            {
-                if (age <= 20050101)
+                if (person.HealthCareStaff > 0)
                 {
-
-                    List<People> order = novaccitionforchildren
-                   .OrderBy(person => person.BirthOfDate)
-                   .ThenBy(person => person.HealthCareStaff == 1)
-                   .ThenBy(person => age <= 19580101)
-                   .ThenBy(person => person.PersonsInRiskGroup == 1)
-                   .ToList();
-
-                    List<People> notinorderpepole = novaccitionforchildren
-                   .OrderBy(person => person.BirthOfDate)
-                   .Except(orderPeople)
-                   .ToList();
-                    orderPeople = order.Concat(notinorderpepole).ToList();
+                    healthcareStaffFilter.Add(filterpeople);
                 }
-
+                else if (Agecontrol(person.BirthOfDate) >= 65)
+                {
+                    oldAgeFilter.Add(filterpeople);
+                }
+                else if (person.PersonsInRiskGroup > 0)
+                {
+                    personInRiskGroupFilter.Add(filterpeople);
+                }
+                else
+                {
+                    noOrderPeopleFilter.Add(filterpeople);
+                }
             }
-            else
-            {
-                List<People> order = vaccinationforall
-                      .OrderBy(person => person.BirthOfDate)
-                      .ThenBy(person => person.HealthCareStaff == 1)
-                      .ThenBy(person => age <= 19580101)
-                      .ThenBy(person => person.PersonsInRiskGroup == 1)
-                      .ToList();
 
-                List<People> notinorderpepole = vaccinationforall
-               .OrderBy(person => person.BirthOfDate)
-               .Except(orderPeople)
-               .ToList();
-                orderPeople = order.Concat(notinorderpepole).ToList();
-            }
+            orderPeople.AddRange(healthcareStaffFilter);
+            orderPeople.AddRange(oldAgeFilter);
+            orderPeople.AddRange(personInRiskGroupFilter);
+            orderPeople.AddRange(noOrderPeopleFilter);
+
             foreach (var person in orderPeople)
             {
                 PeopleDose listPeopleDose = new PeopleDose
@@ -368,7 +366,7 @@ namespace Vaccination
 
             string[] outputLines =
             changePeople.Select(person =>
-            $"{person.DoseBrithOfDate}, {person.DoseLastName}, {person.DoseFirstName}, {person.DoseAmunt}")
+            $"{person.DoseBrithOfDate},{person.DoseLastName},{person.DoseFirstName},{person.DoseAmunt}")
             .ToArray();
 
             return outputLines;
@@ -380,25 +378,7 @@ namespace Vaccination
 
             return lines;
         }
-
-        public static void SaveToIndataCSV()
-        {
-            var list = new List<string>();
-            foreach (var person in peopleList)
-            {
-                string line =
-                    person.BirthOfDate + "," +
-                    person.LastName + "," +
-                    person.FirstName + "," +
-                    person.PersonsInRiskGroup + "," +
-                    person.GroupforInfection + "," +
-                    person.HealthCareStaff;
-                list.Add(line);
-            }
-
-            File.WriteAllLines(fileInput, list);
-        }
-
+        
         public static int ShowChoice(string heading)
         {
             List<string> choice = new List<string>();
@@ -407,6 +387,105 @@ namespace Vaccination
             return ShowMenu(heading, choice);
         }
 
+        public static int Agecontrol(string birthDate)
+        {
+            DateOnly today = DateOnly.FromDateTime(DateTime.Today);
+            string birth = birthDate.Substring(0, 8);
+
+            DateOnly dateOnly = DateOnly.FromDateTime(DateTime.ParseExact(birth, "yyyyMMdd", CultureInfo.InvariantCulture));
+
+            int newage = today.Year - dateOnly.Year;
+
+            if (dateOnly > today.AddYears(-newage))
+            {
+                newage = newage - 1;
+            }
+            return newage;
+        }
+
+        public static void Handleexception(string[] handlearray)
+        {
+            List<string> exceptions = new List<string>();
+            foreach (string a in handlearray)
+            {
+                string[] strings = a.Split(','); 
+                if (strings.Length != 6)
+                {
+                    exceptions.Add($"Fel för få värden");
+                }
+
+                string birthDate = strings[0];
+
+                for (int i = 0; i < birthDate.Length; i++)
+                {
+                    char q = birthDate[i];
+                    if (!char.IsDigit(q) || birthDate.Length < 10 || birthDate.Length > 13)
+                    {
+                        if (q != '-' || birthDate.Length < 10 || birthDate.Length > 13)
+                        {
+                            exceptions.Add($"Fel personnummer: {birthDate}");
+                        }
+                    }
+
+                }
+                if (strings[1] == null)
+                {
+                    exceptions.Add($"Fel efternamn: {strings[1]}");
+                }
+
+                if (strings[2] == null)
+                {
+                    exceptions.Add($"Fel namn: {strings[2]}");
+                }
+
+                if (strings[3] != "1" || strings[3] == null)
+                {
+                    if (strings[3] != "0" || strings[3] == null)
+                    {
+                        exceptions.Add($"Fel siffra 3 {strings[3]}");
+                    }
+                }
+
+                if (strings[4] != "1" || strings[4] == null)
+                {
+                    if (strings[4] != "0" || strings[4] == null)
+                    {
+                        exceptions.Add($"Fel siffra 4 {strings[4]}");
+                    }
+                }
+
+                if (strings[5] != "1" || strings[5] == null)
+                {
+                    if (strings[5] != "0" || strings[5] == null)
+                    {
+                        exceptions.Add($"Fel siffra 5 {strings[5]}");
+                    }
+                }
+            }
+
+            if(exceptions.Count > 0)
+            {
+                throw new Exception(string.Join(Environment.NewLine, exceptions));
+            }
+
+        }
+        public static int Vaccinamoutinput(string vaccinamout)
+        {
+            while (true)
+            {
+                Console.Write(vaccinamout);
+                string inputvaccinamout = Console.ReadLine();
+                try
+                {
+                    int result = int.Parse(inputvaccinamout);
+                    return result;
+                }
+                catch
+                {
+                    Console.WriteLine("ange ett heltal.");
+                }
+            }
+        }
         public static int ShowMenu(string prompt, IEnumerable<string> options)
         {
             if (options == null || options.Count() == 0)
@@ -490,11 +569,117 @@ namespace Vaccination
     public class ProgramTests
     {
         [TestMethod]
-        public void ExampleTest()
+        public void VaccinateWithChildren()
         {
-            using FakeConsole console = new FakeConsole("First input", "Second input");
-            Program.Main();
-            Assert.AreEqual("Hello!", console.Output);
+            string[] input =
+            {
+                "20051215-2221,Austen,Jene,0,0,1",
+                "7210012331,Sjödin,Agneta,1,1,0",
+                "196701014422,Berg,Bengt,1,0,0",
+                "19430204-5544,Bean,Björn,0,1,1",
+                "193608021234,Simpson,Homer,1,1,1"
+            };
+
+            int doses = 10;
+            bool vaccinateChildren = true;
+
+            string[] output = Program.CreateVaccinationOrder(input, doses, vaccinateChildren);
+            
+            Assert.AreEqual(output.Length, 5);
+            Assert.AreEqual("19360802-1234,Simpson,Homer,1", output[0]);
+            Assert.AreEqual("19430204-5544,Bean,Björn,1", output[1]);
+            Assert.AreEqual("20051215-2221,Austen,Jene,2", output[2]);
+            Assert.AreEqual("19670101-4422,Berg,Bengt,2", output[3]);
+            Assert.AreEqual("19721001-2331,Sjödin,Agneta,1", output[4]);
+        }
+
+        public void VaccinatWithoutChildren()
+        {
+            string[] input =
+            {
+                "20051215-2221,Austen,Jene,0,0,1",
+                "7210012331,Sjödin,Agneta,1,1,0",
+                "196701014422,Berg,Bengt,1,0,0",
+                "19430204-5544,Bean,Björn,0,1,1",
+                "193608021234,Simpson,Homer,1,1,1"
+            };
+
+            int doses = 10;
+            bool vaccinateChildren = false;
+
+            string[] output = Program.CreateVaccinationOrder(input, doses, vaccinateChildren);
+            
+            Assert.AreEqual(output.Length, 4);
+            Assert.AreEqual("19360802-1234,Simpson,Homer,1", output[0]);
+            Assert.AreEqual("19430204-5544,Bean,Björn,1", output[1]);
+            Assert.AreEqual("19670101-4422,Berg,Bengt,2", output[2]);
+            Assert.AreEqual("19721001-2331,Sjödin,Agneta,1", output[3]);
+        }
+        public void VaccinationWithException()
+        {
+            string[] input =
+            {
+                "20051215-2221,Austen,Jene,0,0,1",
+                "7210012331,Sjödin,Agneta,1,1,0",
+                "196701014422,Berg,Bengt,1,0,0",
+                "1943b204-5544,Bean,Björn,0,1,1",
+                "193608021234,Simpson,Homer,1,1,1"
+            };
+
+            int doses = 10;
+            bool vaccinateChildren = false;
+            string[] output = Program.CreateVaccinationOrder(input, doses, vaccinateChildren);
+            
+            Assert.AreEqual(output.Length, 1);
+            Assert.AreEqual("Fel personnummer: 1943b204-5544", output[0]);     
+            
+        }
+        public void VaccinationWithMoreThanOneException()
+        {
+            string[] input =
+            {
+                "200512a15-2221,Austen,Jene,0,0,1",
+                "7210012331,Sjödin,Agneta,a,1,0",
+                "196701014422,Berg,Bengt,1,0,0",
+                "19430204-5544,Bean,Björn,0,1,1",
+                "193608021234,Simpson,Homer,1,1,1"
+            };
+            int doses = 10;
+            bool vaccinateChildren = false;
+
+            string[] output = Program.CreateVaccinationOrder(input, doses, vaccinateChildren);
+            
+            Assert.AreEqual(output.Length, 2);
+            Assert.AreEqual("Fel personnummer: 200512a15-2221", output[0]);
+            Assert.AreEqual("Fel siffra 3 a", output[1]);
+
+        }
+        public void VaccinationWithAllZero()
+        {
+             string[] input =
+             {
+                "20051215-2221,Austen,Jene,0,0,0",
+                "7210012331,Sjödin,Agneta,0,0,0",
+                "196701014422,Berg,Bengt,0,0,0",
+                "19430204-5544,Bean,Björn,0,0,0",
+                "193608021234,Simpson,Homer,0,0,0"
+             };
+
+             int doses = 10;
+             bool vaccinateChildren = true;
+
+            string[] output = Program.CreateVaccinationOrder(input, doses, vaccinateChildren);
+            
+            Assert.AreEqual(output.Length, 5);
+            Assert.AreEqual("19360802-1234,Simpson,Homer,2", output[0]);
+            Assert.AreEqual("19430204-5544,Bean,Björn,2", output[1]);
+            Assert.AreEqual("19670101-4422,Berg,Bengt,2", output[2]);
+            Assert.AreEqual("19721001-2331,Sjödin,Agneta,2", output[3]);
+            Assert.AreEqual("20051215-2221,Austen,Jene,2", output[4]);
         }
     }
+    
 }
+
+
+
